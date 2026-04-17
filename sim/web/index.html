@@ -1,0 +1,1883 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>sim2 Dashboard</title>
+  <style>
+    :root {
+      --bg: #f3f0e9;
+      --paper: #fffaf1;
+      --ink: #1d2a28;
+      --muted: #52635f;
+      --line: #d7cab3;
+      --accent: #1f7a6a;
+      --accent-2: #d17b22;
+      --good: #1e8f5c;
+      --warn: #c86d22;
+      --bad: #bf3d3d;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 10% 15%, #fff8eb 0%, rgba(255,248,235,0) 45%),
+        radial-gradient(circle at 90% 5%, #e6f3ef 0%, rgba(230,243,239,0) 35%),
+        var(--bg);
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 390px 1fr;
+      gap: 16px;
+      padding: 16px;
+      min-height: 100vh;
+      align-items: start;
+    }
+
+    .panel, .canvas-wrap {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--paper);
+      box-shadow: 0 8px 22px rgba(31, 47, 41, 0.08);
+    }
+
+    .panel {
+      padding: 14px;
+      overflow: auto;
+      max-height: calc(100vh - 32px);
+    }
+
+    h1 { margin: 0 0 6px; font-size: 22px; letter-spacing: .2px; }
+    .sub { margin: 0 0 12px; color: var(--muted); font-size: 13px; }
+
+    .toolbar { display: flex; gap: 8px; margin: 10px 0 14px; }
+
+    button {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 11px;
+      cursor: pointer;
+      font-weight: 600;
+      background: #fff;
+      color: var(--ink);
+    }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    button.stop    { background: #fff2e8; border-color: #ebb98d; color: #844712; }
+
+    .sec { margin: 0 0 14px; border-top: 1px dashed var(--line); padding-top: 10px; }
+    .sec h2 {
+      margin: 0 0 8px; font-size: 13px;
+      text-transform: uppercase; letter-spacing: .8px; color: var(--muted);
+    }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+    .help-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: underline dotted;
+      text-underline-offset: 2px;
+      cursor: help;
+    }
+    .help-q {
+      border: 1px solid #cbbca2;
+      border-radius: 999px;
+      width: 16px;
+      height: 16px;
+      padding: 0;
+      background: #fff;
+      color: #6a6a5a;
+      font-size: 11px;
+      line-height: 1;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .help-q:hover, .help-q:focus-visible {
+      border-color: var(--accent);
+      color: var(--accent);
+      outline: none;
+    }
+    .help-tip {
+      position: fixed;
+      max-width: 320px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(9, 18, 14, 0.96);
+      color: #e9f2ef;
+      font-size: 12px;
+      line-height: 1.4;
+      z-index: 1200;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+      pointer-events: none;
+      display: none;
+    }
+    .help-tip.show { display: block; }
+
+    input, select {
+      width: 100%;
+      padding: 7px 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+      font-size: 13px;
+    }
+
+    .stats {
+      font-size: 13px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      margin-bottom: 10px;
+      line-height: 1.45;
+    }
+
+    .status-pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .2px;
+      vertical-align: middle;
+    }
+    .running { background: #def6e9; color: var(--good); }
+    .stopped { background: #ffe7e7; color: var(--bad); }
+
+    .canvas-wrap {
+      position: relative;
+      overflow: hidden;
+      border-radius: 14px;
+      height: calc(100vh - 32px);
+      background: #080e0c;
+    }
+
+    #topo3d {
+      width: 100%;
+      height: 100%;
+    }
+
+    .legend {
+      position: absolute;
+      right: 10px;
+      top: 10px;
+      font-size: 12px;
+      background: rgba(8, 20, 16, 0.82);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 10px;
+      padding: 8px 10px;
+      line-height: 1.6;
+      pointer-events: none;
+      color: #c8d8d4;
+    }
+    .legend b { color: #eef5f3; }
+    .legend .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+
+    .view-controls {
+      position: absolute;
+      left: 10px;
+      top: 10px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      background: rgba(8, 20, 16, 0.82);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 12px;
+      color: #c8d8d4;
+    }
+    .view-controls label { color: #8aada6; margin-bottom: 0; }
+    .view-controls select, .view-controls input {
+      width: auto; min-width: 84px;
+      padding: 4px 6px; font-size: 12px;
+      background: #0f2320; color: #d4e8e2;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+    .view-controls button {
+      padding: 5px 8px; font-size: 12px; border-radius: 8px;
+      background: #0f2320; color: #d4e8e2;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+    .view-controls button:hover { background: #1a3530; }
+
+    .foot { margin-top: 8px; color: var(--muted); font-size: 12px; }
+
+    .metrics-box {
+      font-size: 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+    .metrics-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 10px;
+      cursor: pointer;
+      user-select: none;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .6px;
+    }
+    .metrics-header:hover { background: #f7f3ed; }
+    .metrics-body {
+      padding: 6px 10px 8px;
+      border-top: 1px solid var(--line);
+      line-height: 1.55;
+    }
+    .metrics-body.hidden { display: none; }
+    .mrow { display: flex; justify-content: space-between; }
+    .mrow .mlabel { color: var(--muted); }
+    .mrow .mval   { font-weight: 600; }
+
+    .chaos-box {
+      border: 1px solid #e8b8a0;
+      border-radius: 10px;
+      background: #fff8f4;
+      margin-bottom: 10px;
+      overflow: hidden;
+      font-size: 12px;
+    }
+    .chaos-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 10px;
+      cursor: pointer;
+      user-select: none;
+      font-size: 12px;
+      font-weight: 600;
+      color: #a04020;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+    }
+    .chaos-header:hover { background: #fdeee6; }
+    .chaos-body {
+      padding: 8px 10px 10px;
+      border-top: 1px solid #e8b8a0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .chaos-body.hidden { display: none; }
+    .chaos-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .chaos-row label { color: var(--muted); margin-bottom: 0; min-width: 56px; }
+    .chaos-row input[type=number] {
+      width: 64px; padding: 5px 6px; font-size: 12px;
+    }
+    button.chaos {
+      background: #fff0ea; border-color: #e09070; color: #a03010;
+      padding: 5px 10px; font-size: 12px;
+    }
+    button.chaos:hover { background: #fde0d0; }
+
+    .recovery-box {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      margin-bottom: 10px;
+      overflow: hidden;
+      font-size: 12px;
+      display: none;
+    }
+    .recovery-box.visible { display: block; }
+    .recovery-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 10px;
+      cursor: pointer;
+      user-select: none;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .6px;
+    }
+    .recovery-header:hover { background: #f7f3ed; }
+    .recovery-body {
+      padding: 6px 10px 8px;
+      border-top: 1px solid var(--line);
+      line-height: 1.6;
+    }
+    .recovery-body.hidden { display: none; }
+    .recovery-pill {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+      vertical-align: middle;
+    }
+    .rpill-running     { background: #fff3d6; color: #a06000; }
+    .rpill-stabilized  { background: #def6e9; color: var(--good); }
+    .rpill-timeout     { background: #ffe7e7; color: var(--bad); }
+    .rpill-aborted     { background: #f0eee8; color: var(--muted); }
+    .rrow { display: flex; justify-content: space-between; }
+    .rrow .rlabel { color: var(--muted); }
+    .rrow .rval   { font-weight: 600; }
+    .rrow .rval.good { color: var(--good); }
+    .rrow .rval.warn { color: var(--warn); }
+    .rsep { border: none; border-top: 1px dashed var(--line); margin: 4px 0; }
+
+    .packets-box {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      margin-bottom: 10px;
+      overflow: hidden;
+      font-size: 12px;
+    }
+    .packets-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 10px;
+      cursor: pointer;
+      user-select: none;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .6px;
+    }
+    .packets-header:hover { background: #f7f3ed; }
+    .packets-body {
+      padding: 6px 10px 8px;
+      border-top: 1px solid var(--line);
+    }
+    .packets-body.hidden { display: none; }
+    .pkt-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+    .pkt-table th {
+      text-align: right;
+      color: var(--muted);
+      font-weight: 600;
+      padding: 2px 4px;
+    }
+    .pkt-table th:first-child { text-align: left; }
+    .pkt-table td {
+      text-align: right;
+      padding: 2px 4px;
+      font-variant-numeric: tabular-nums;
+    }
+    .pkt-table td:first-child { text-align: left; color: var(--muted); }
+    .pkt-table td.pval { font-weight: 600; color: var(--ink); }
+    .pkt-table td.rate { color: var(--accent); }
+    .pkt-table tbody tr:nth-child(odd) { background: #f9f6f0; }
+    .pkt-section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: var(--muted);
+      margin: 8px 0 3px;
+    }
+
+    .epochs-box {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      margin-bottom: 10px;
+      overflow: hidden;
+      font-size: 12px;
+    }
+    .epochs-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 10px;
+      cursor: pointer;
+      user-select: none;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .6px;
+    }
+    .epochs-header:hover { background: #f7f3ed; }
+    .epochs-body { border-top: 1px solid var(--line); }
+    .epochs-body.hidden { display: none; }
+    .epoch-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      border-bottom: 1px solid var(--line);
+      cursor: pointer;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+    .epoch-row:last-child { border-bottom: none; }
+    .epoch-row:hover { background: #f7f3ed; }
+    .epoch-row .etrig {
+      font-weight: 600;
+      min-width: 52px;
+      color: var(--ink);
+    }
+    .epoch-row .ekilled {
+      color: var(--muted);
+      flex: 1;
+    }
+    .epoch-row .edur {
+      color: var(--muted);
+      min-width: 42px;
+      text-align: right;
+    }
+    .epoch-detail {
+      padding: 6px 12px 8px;
+      background: #f9f6f0;
+      border-top: 1px dashed var(--line);
+      font-size: 11px;
+      line-height: 1.6;
+      display: none;
+    }
+    .epoch-detail.open { display: block; }
+    .epoch-detail .drow { display: flex; justify-content: space-between; }
+    .epoch-detail .dlabel { color: var(--muted); }
+    .epoch-detail .dval   { font-weight: 600; }
+
+    .phase-pill {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .2px;
+      vertical-align: middle;
+      background: #e8f0ee;
+      color: var(--muted);
+      margin-left: 4px;
+    }
+
+    .spawn-bar-wrap {
+      height: 5px;
+      background: var(--line);
+      border-radius: 3px;
+      margin: 6px 0 2px;
+      overflow: hidden;
+    }
+    .spawn-bar {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 3px;
+      transition: width 0.4s;
+    }
+
+    .tooltip {
+      position: absolute;
+      display: none;
+      pointer-events: none;
+      background: rgba(8, 18, 14, 0.95);
+      color: #e8f4f0;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 12px;
+      line-height: 1.45;
+      white-space: nowrap;
+      z-index: 30;
+    }
+
+    @media (max-width: 980px) {
+      .app { grid-template-columns: 1fr; }
+      .panel { max-height: none; }
+      .canvas-wrap { height: 70vh; min-height: 460px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- ── Left panel ─────────────────────────────────────────────── -->
+    <aside class="panel">
+      <h1>sim2 Dashboard</h1>
+      <p class="sub">Start/stop simulation and explore node topology in 3D.</p>
+
+      <div class="stats" id="stateBox">Loading state...</div>
+
+      <div class="metrics-box">
+        <div class="metrics-header" id="metricsToggle">
+          Metrics <span id="metricsChevron">▸</span>
+        </div>
+        <div class="metrics-body hidden" id="metricsBody">
+          <div class="mrow"><span class="mlabel">connected</span><span class="mval" id="mx_connected">—</span></div>
+          <div class="mrow"><span class="mlabel">joining</span><span class="mval" id="mx_joining">—</span></div>
+          <div class="mrow"><span class="mlabel">solo</span><span class="mval" id="mx_solo">—</span></div>
+          <div class="mrow"><span class="mlabel">join success rate</span><span class="mval" id="mx_join_rate">—</span></div>
+          <div class="mrow"><span class="mlabel">join latency p95</span><span class="mval" id="mx_join_p95">—</span></div>
+          <div class="mrow"><span class="mlabel">heap</span><span class="mval" id="mx_heap">—</span></div>
+          <div class="mrow"><span class="mlabel">goroutines</span><span class="mval" id="mx_goroutines">—</span></div>
+          <div class="mrow"><span class="mlabel">topology payload</span><span class="mval" id="mx_topo_kb">—</span></div>
+          <div class="mrow"><span class="mlabel">killed total</span><span class="mval" id="mx_killed">—</span></div>
+        </div>
+      </div>
+
+      <div class="packets-box">
+        <div class="packets-header" id="packetsToggle">
+          Packets <span id="packetsChevron">▸</span>
+        </div>
+        <div class="packets-body hidden" id="packetsBody">
+          <div class="pkt-section-title">UDP Traffic</div>
+          <table class="pkt-table">
+            <thead>
+              <tr><th>kind</th><th>sent</th><th>recv</th><th>rate/s</th><th>p95/s</th><th>p99/s</th></tr>
+            </thead>
+            <tbody id="pkt_udp_body"></tbody>
+          </table>
+          <div class="pkt-section-title" style="margin-top:10px">WS Control Plane</div>
+          <table class="pkt-table">
+            <thead>
+              <tr><th>kind</th><th>sent</th><th>recv</th></tr>
+            </thead>
+            <tbody id="pkt_ws_body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="recovery-box" id="recoveryBox">
+        <div class="recovery-header" id="recoveryToggle">
+          Recovery <span id="recoveryStatus"></span><span id="recoveryChevron">▾</span>
+        </div>
+        <div class="recovery-body" id="recoveryBody">
+          <div class="rrow"><span class="rlabel">trigger</span><span class="rval" id="rc_trigger">—</span></div>
+          <div class="rrow"><span class="rlabel">killed</span><span class="rval" id="rc_killed">—</span></div>
+          <hr class="rsep">
+          <div class="rrow"><span class="rlabel">first new leader</span><span class="rval" id="rc_first_leader">—</span></div>
+          <div class="rrow"><span class="rlabel">50% connected</span><span class="rval" id="rc_t50">—</span></div>
+          <div class="rrow"><span class="rlabel">90% connected</span><span class="rval" id="rc_t90">—</span></div>
+          <div class="rrow"><span class="rlabel">99% connected</span><span class="rval" id="rc_t99">—</span></div>
+          <div class="rrow"><span class="rlabel">topology stable</span><span class="rval" id="rc_stable">—</span></div>
+          <div class="rrow"><span class="rlabel">stable window start</span><span class="rval" id="rc_stable_win_start">—</span></div>
+          <div class="rrow"><span class="rlabel">stable window elapsed</span><span class="rval" id="rc_stable_win_elapsed">—</span></div>
+          <div class="rrow"><span class="rlabel">peak disconnected</span><span class="rval" id="rc_peak_disc">—</span></div>
+          <hr class="rsep">
+          <div class="rrow"><span class="rlabel">reconnect p50</span><span class="rval" id="rc_rec_p50">—</span></div>
+          <div class="rrow"><span class="rlabel">reconnect p95</span><span class="rval" id="rc_rec_p95">—</span></div>
+          <div class="rrow"><span class="rlabel">reconnect p99</span><span class="rval" id="rc_rec_p99">—</span></div>
+          <div class="rrow"><span class="rlabel">leader promo p95</span><span class="rval" id="rc_promo_p95">—</span></div>
+          <hr class="rsep">
+          <div class="rrow"><span class="rlabel">leader changes</span><span class="rval" id="rc_lc">—</span></div>
+          <div class="rrow"><span class="rlabel">parent changes</span><span class="rval" id="rc_pc">—</span></div>
+          <div class="rrow"><span class="rlabel">role flaps</span><span class="rval" id="rc_flaps">—</span></div>
+        </div>
+      </div>
+
+      <div class="epochs-box">
+        <div class="epochs-header" id="epochsToggle">
+          Epoch History <span id="epochsChevron">▸</span>
+        </div>
+        <div class="epochs-body hidden" id="epochsList"></div>
+      </div>
+
+      <div class="toolbar">
+        <button class="primary" id="startBtn">Start</button>
+        <button class="stop"    id="stopBtn">Stop</button>
+      </div>
+
+      <div class="sec">
+        <h2>Core</h2>
+        <div class="grid">
+          <div><label title="Numero massimo di nodi/candidati che un leader gestisce al proprio livello.">N (same-level)</label><input id="n" type="number" min="1"></div>
+          <div><label title="Profondita/ampiezza di conoscenza verso livelli superiori (failover e routing gerarchico).">Y (upper levels)</label><input id="y" type="number" min="1"></div>
+          <div><label title="Numero di nodi creati allo start della simulazione.">Nodes</label><input id="nodes" type="number" min="0"></div>
+          <div><label title="Periodo del tick principale della simulazione; piu basso = piu reattivo ma piu CPU.">Tick (ms)</label><input id="tick_ms" type="number" min="1"></div>
+          <div><label title="Dimensione coda messaggi per nodo; troppo bassa puo causare drop/backpressure.">Inbox size</label><input id="inbox_size" type="number" min="1"></div>
+          <div><label title="Dimensione logica subnet usata nella simulazione del fabric.">Subnet size</label><input id="subnet_size" type="number" min="1"></div>
+          <div><label title="Se true, ogni nodo gira su goroutine dedicata.">Node goroutines</label><select id="node_goroutines"><option value="true">true</option><option value="false">false</option></select></div>
+          <div><label title="Se true, lo spawn avviene concorrente; se false, sequenziale.">Async spawn</label><select id="async_spawn"><option value="true">true</option><option value="false">false</option></select></div>
+          <div><label title="Limite worker concorrenti durante spawn async (0 = default interno).">Spawn parallelism</label><input id="spawn_parallelism" type="number" min="0"></div>
+          <div><label title="Delay tra spawn consecutivi; utile per test progressivi.">Spawn delay (ms)</label><input id="spawn_delay_ms" type="number" min="0"></div>
+          <div><label title="Seed RNG; 0 usa seed casuale a runtime.">Seed (0=random)</label><input id="seed" type="number"></div>
+          <div><label title="Timeout massimo per shutdown ordinato della simulazione.">Shutdown timeout (ms)</label><input id="shutdown_timeout_ms" type="number" min="0"></div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <h2>UDP Sim</h2>
+        <div class="grid">
+          <div><label title="Abilita traffico UDP simulato (discover/offer/connect).">UDP demo</label><select id="udp_demo"><option value="true">true</option><option value="false">false</option></select></div>
+          <div><label title="root: discover emesso dal root; random: discover emesso da nodi non connessi.">Sender</label><select id="udp_sender"><option value="root">root</option><option value="random">random</option></select></div>
+          <div><label title="Tipo pacchetto UDP usato dalla discovery (es. DISCOVER).">Kind</label><input id="udp_kind" type="text"></div>
+          <div><label title="Payload testuale dei pacchetti UDP di discovery.">Payload</label><input id="udp_payload" type="text"></div>
+          <div><label title="Intervallo tra cicli di discovery UDP.">Interval (ms)</label><input id="udp_interval_ms" type="number" min="1"></div>
+          <div><label title="Numero di subnet logiche del fabric UDP simulato.">Subnets</label><input id="udp_subnets" type="number" min="1"></div>
+          <div><label title="Latenza minima simulata per pacchetto UDP.">Delay min (ms)</label><input id="udp_delay_min_ms" type="number" min="0"></div>
+          <div><label title="Latenza massima simulata per pacchetto UDP.">Delay max (ms)</label><input id="udp_delay_max_ms" type="number" min="0"></div>
+          <div><label title="Probabilita di perdita pacchetto UDP (0 = nessuna perdita, 1 = perdita totale).">Drop rate [0..1]</label><input id="udp_drop_rate" type="number" min="0" max="1" step="0.01"></div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <h2>Q Dynamics</h2>
+        <div class="grid">
+          <div><label title="Ampiezza massima variazione Q per secondo (0.01 = ±1%/s).">Q drift pct/s [0..1]</label><input id="q_drift_pct_per_sec" type="number" min="0" max="1" step="0.001"></div>
+          <div><label title="Intervallo di aggiornamento del drift Q. Valori bassi = micro-variazioni piu frequenti.">Q update interval (ms)</label><input id="q_update_interval_ms" type="number" min="1"></div>
+          <div><label title="Dopo kill/restart, congela il drift Q per questa durata (0 = disabilitato).">Q freeze after event (ms)</label><input id="q_freeze_after_ms" type="number" min="0"></div>
+          <div><label title="Intervallo minimo tra due cambi parent/leader per lo stesso nodo (anti-flap).">Min reparent interval (ms)</label><input id="min_reparent_interval_ms" type="number" min="0"></div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <h2>Leader Rotation</h2>
+        <div class="grid">
+          <div><label title="Abilita la policy di sostituzione leader tra pari livello.">Enable rotation</label><select id="leader_rotation"><option value="false">false</option><option value="true">true</option></select></div>
+          <div><label title="Soglia underperformance: rotate se Q_leader &lt; mean*(1-drop_pct). Valori alti = policy piu conservativa.">Drop pct (0..1)</label><input id="rotation_drop_pct" type="number" min="0" max="0.99" step="0.01"></div>
+          <div><label title="Vantaggio minimo richiesto al candidato: Q_best >= Q_leader + min_delta.">Min delta (0..1)</label><input id="rotation_min_delta" type="number" min="0" max="1" step="0.01"></div>
+          <div><label title="Durata minima continua delle condizioni di trigger prima di proporre rotate.">Window (ms)</label><input id="rotation_window_ms" type="number" min="1"></div>
+          <div><label title="Tempo minimo in cui il leader corrente deve restare in carica prima di essere sostituibile.">Min tenure (ms)</label><input id="rotation_min_tenure_ms" type="number" min="1"></div>
+          <div><label title="Pausa minima tra due rotazioni sullo stesso livello.">Cooldown (ms)</label><input id="rotation_cooldown_ms" type="number" min="0"></div>
+          <div><label title="Frequenza di valutazione della policy di rotazione.">Check every (ms)</label><input id="rotation_check_ms" type="number" min="1"></div>
+          <div><label title="Quota ack richiesta in fase PREPARE (0..1).">Prepare quorum (0..1)</label><input id="rotation_prepare_quorum_pct" type="number" min="0.01" max="1" step="0.01"></div>
+          <div><label title="Timeout massimo attesa ack PREPARE.">Prepare timeout (ms)</label><input id="rotation_prepare_timeout_ms" type="number" min="1"></div>
+          <div><label title="Quota ack richiesta in fase COMMIT (0..1). Ora e vincolante prima dell'apply.">Commit quorum (0..1)</label><input id="rotation_commit_quorum_pct" type="number" min="0.01" max="1" step="0.01"></div>
+          <div><label title="Timeout massimo attesa ack COMMIT. Se scade senza quorum, rotate abortisce.">Commit timeout (ms)</label><input id="rotation_commit_timeout_ms" type="number" min="1"></div>
+        </div>
+      </div>
+
+      <div class="chaos-box">
+        <div class="chaos-header" id="chaosToggle">
+          ⚡ Chaos <span id="chaosChevron">▸</span>
+        </div>
+        <div class="chaos-body hidden" id="chaosBody">
+          <div class="chaos-row">
+            <label title="Aggiunge nuovi nodi runtime senza riavviare la simulazione.">Spawn</label>
+            <input id="chaos_spawn_count" type="number" min="1" value="10" title="Numero di nodi da creare.">
+            <span style="color:var(--muted)">nodes</span>
+            <button class="chaos" id="chaosSpawnBtn">+ Spawn</button>
+          </div>
+          <div class="chaos-row">
+            <label title="Rimuove nodi a campione in base a percentuale e ruolo.">Kill</label>
+            <input id="chaos_kill_pct" type="number" min="1" max="99" value="10" title="Percentuale di nodi da rimuovere.">
+            <span style="color:var(--muted)">%</span>
+            <select id="chaos_kill_role" style="width:auto;padding:4px 6px;font-size:12px" title="Filtro ruolo su cui applicare la kill.">
+              <option value="all">all</option>
+              <option value="leader">leader</option>
+              <option value="sender">sender</option>
+              <option value="base">base</option>
+            </select>
+            <input id="chaos_kill_min_keep" type="number" min="0" value="1" style="width:40px" title="Numero minimo di leader da mantenere vivi quando target_role=leader.">
+            <button class="chaos" id="chaosKillBtn">✕ Kill</button>
+          </div>
+          <div class="chaos-row">
+            <label title="Guardrail per evitare la rimozione accidentale del root.">Safety</label>
+            <label style="display:flex;align-items:center;gap:6px;margin:0;min-width:0;cursor:pointer;color:var(--muted);" title="Se attivo, il nodo root è escluso da kill/restart casuali.">
+              <input id="chaos_exclude_root" type="checkbox" checked style="width:auto">
+              Protect root
+            </label>
+          </div>
+          <div class="chaos-row">
+            <label title="Rimuove e ricrea una quota di nodi (nuovi ID).">Restart</label>
+            <input id="chaos_restart_pct" type="number" min="1" max="99" value="10" title="Percentuale di nodi da restartare.">
+            <span style="color:var(--muted)">%</span>
+            <label title="Delay tra uno spawn di replacement e il successivo." style="margin:0;min-width:0;display:inline-flex;align-items:center;">stagger</label>
+            <input id="chaos_stagger_ms" type="number" min="0" value="25" style="width:52px" title="Delay tra uno spawn di replacement e il successivo.">
+            <span style="color:var(--muted)">ms</span>
+            <button class="chaos" id="chaosRestartBtn">↺ Restart</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="foot" id="msg"></div>
+    </aside>
+
+    <!-- ── 3D canvas ──────────────────────────────────────────────── -->
+    <section class="canvas-wrap">
+      <div id="topo3d"></div>
+      <div class="tooltip" id="nodeTip"></div>
+
+      <div class="view-controls">
+        <label>Hierarchy</label>
+        <select id="conn_kind">
+          <option value="ALL" selected>ALL</option>
+          <option value="down_leader">down_leader</option>
+          <option value="down_follower">down_follower</option>
+          <option value="same_level">same_level</option>
+          <option value="active">active</option>
+          <option value="parent">parent</option>
+        </select>
+        <label>Traffic fade ms</label>
+        <input id="edge_window_ms" type="number" min="500" max="30000" value="5000">
+        <button id="resetEdgesBtn">Reset Edges</button>
+        <button id="resetCamBtn">⟳ Camera</button>
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+          <input type="checkbox" id="show_struct" checked>
+          Hierarchy
+        </label>
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+          <input type="checkbox" id="show_traffic">
+          Traffic
+        </label>
+      </div>
+
+      <div class="legend">
+        <b>Nodes</b><br>
+        <span class="dot" style="background:#FFB030"></span>Leader<br>
+        <span class="dot" style="background:#30E080"></span>Sender<br>
+        <span class="dot" style="background:#20A8C0"></span>Base<br>
+        <span class="dot" style="background:#FF3818"></span>Issue<br>
+        <div style="margin-top:5px"><b>Hierarchy</b></div>
+        <span style="color:#00DFC8">─</span> down_leader<br>
+        <span style="color:#50D080">─</span> down_follower<br>
+        <span style="color:#E8A030">─</span> same_level<br>
+        <span style="color:#C8E8E0">─</span> active<br>
+        <div style="margin-top:5px"><b>Traffic</b></div>
+        <span style="color:#FF6820">─</span> CONNECT<br>
+        <span style="color:#9060E8">─</span> DISCOVER<br>
+        <span style="color:#A0E040">─</span> OFFER<br>
+        <div style="margin-top:5px;font-size:11px;color:#6a9e94">
+          Root center · rami ogni 360°/Y<br>
+          Y axis = profondità livello<br>
+          Drag · Scroll · Right-drag
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three":          "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+      "three/addons/":  "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // ── Tuning constants ──────────────────────────────────────────────────────
+    const BRANCH_L       = 380;   // XZ distance between parent and child leader
+    const LEVEL_DY       = -110;  // Y drop per level (subtle depth)
+    const MAX_INST       = 4000;  // max instances per role mesh
+    const MAX_EDGE_SEGS  = 40000; // max edge line segments
+    const LEADER_SCALE   = 2.2;
+    const SENDER_SCALE   = 1.4;
+    const BASE_SCALE     = 1.0;
+    const SPHERE_R       = 5;
+
+    // ── DOM ───────────────────────────────────────────────────────────────────
+    const container    = document.getElementById('topo3d');
+    const nodeTip      = document.getElementById('nodeTip');
+    const stateBox     = document.getElementById('stateBox');
+    const msgBox       = document.getElementById('msg');
+    const edgeWindowEl  = document.getElementById('edge_window_ms');
+    const showStructEl  = document.getElementById('show_struct');
+    const connKindEl    = document.getElementById('conn_kind');
+    const showTrafficEl = document.getElementById('show_traffic');
+
+    // ── Scene ─────────────────────────────────────────────────────────────────
+    const scene  = new THREE.Scene();
+    scene.background = new THREE.Color(0x060d0b);
+    scene.fog        = new THREE.FogExp2(0x060d0b, 0.00016);
+
+    const camera = new THREE.PerspectiveCamera(52, 1, 1, 25000);
+    camera.position.set(0, 900, 1600);
+    camera.lookAt(0, -150, 0);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    container.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping  = true;
+    controls.dampingFactor  = 0.08;
+    controls.target.set(0, -150, 0);
+    controls.minDistance    = 60;
+    controls.maxDistance    = 12000;
+
+    // ── Lighting ──────────────────────────────────────────────────────────────
+    scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+    const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+    sun.position.set(500, 900, 700);
+    scene.add(sun);
+    const fill = new THREE.DirectionalLight(0x44ffcc, 0.22);
+    fill.position.set(-400, -300, -500);
+    scene.add(fill);
+
+    // ── Node InstancedMeshes ──────────────────────────────────────────────────
+    // White material base; per-instance color set via setColorAt
+    const sphereGeom = new THREE.SphereGeometry(SPHERE_R, 10, 7);
+    const mkMat = (shininess) =>
+      new THREE.MeshPhongMaterial({ color: 0xffffff, shininess });
+
+    const meshLeader = new THREE.InstancedMesh(sphereGeom, mkMat(90),  MAX_INST);
+    const meshSender = new THREE.InstancedMesh(sphereGeom, mkMat(45),  MAX_INST);
+    const meshBase   = new THREE.InstancedMesh(sphereGeom, mkMat(20),  MAX_INST);
+    meshLeader.count = meshSender.count = meshBase.count = 0;
+    scene.add(meshLeader, meshSender, meshBase);
+
+    const COL_LEADER  = new THREE.Color(0xFFB030);
+    const COL_SENDER  = new THREE.Color(0x30E080);
+    const COL_BASE    = new THREE.Color(0x20A8C0);
+    const COL_ISSUE   = new THREE.Color(0xFF3818);
+    const COL_STOPPED = new THREE.Color(0x2e403c);
+
+    // instance index → node id lookup
+    const instLeader = [], instSender = [], instBase = [];
+
+    // ── Edge LineSegments ─────────────────────────────────────────────────────
+    const edgePosBuf = new Float32Array(MAX_EDGE_SEGS * 2 * 3);
+    const edgeColBuf = new Float32Array(MAX_EDGE_SEGS * 2 * 3);
+    const edgeGeom   = new THREE.BufferGeometry();
+    edgeGeom.setAttribute('position', new THREE.BufferAttribute(edgePosBuf, 3));
+    edgeGeom.setAttribute('color',    new THREE.BufferAttribute(edgeColBuf, 3));
+    edgeGeom.setDrawRange(0, 0);
+    scene.add(new THREE.LineSegments(edgeGeom,
+      new THREE.LineBasicMaterial({ vertexColors: true })));
+
+    // ── Structural (hierarchy) LineSegments ───────────────────────────────────
+    // Rendered from /api/topology connections[] (kind=parent).
+    // Always visible when "Hierarchy" toggle is on; not subject to edge filters.
+    const structPosBuf = new Float32Array(MAX_EDGE_SEGS * 2 * 3);
+    const structColBuf = new Float32Array(MAX_EDGE_SEGS * 2 * 3);
+    const structGeom   = new THREE.BufferGeometry();
+    structGeom.setAttribute('position', new THREE.BufferAttribute(structPosBuf, 3));
+    structGeom.setAttribute('color',    new THREE.BufferAttribute(structColBuf, 3));
+    structGeom.setDrawRange(0, 0);
+    const structLines  = new THREE.LineSegments(structGeom,
+      new THREE.LineBasicMaterial({ vertexColors: true }));
+    scene.add(structLines);
+
+    // Traffic edge color lookup [r, g, b] (0–1 range)
+    const KIND_RGB = {
+      CONNECT:  [1.00, 0.41, 0.13],  // #FF6820 arancione vivo
+      DISCOVER: [0.56, 0.38, 0.91],  // #9060E8 viola
+      OFFER:    [0.63, 0.88, 0.25],  // #A0E040 lime
+    };
+    const DEFAULT_RGB = [0.40, 0.40, 0.40];
+
+    // Structural hierarchy edge color lookup [r, g, b] (0–1 range)
+    // 'parent' is hidden by default (redundant with down_leader reversed)
+    const KIND_CONN_RGB = {
+      down_leader:   [0.00, 0.87, 0.78],  // #00DFC8 cyan brillante
+      down_follower: [0.31, 0.82, 0.50],  // #50D080 verde
+      same_level:    [0.91, 0.63, 0.19],  // #E8A030 ambra
+      active:        [0.78, 0.91, 0.88],  // #C8E8E0 bianco/ghiaccio
+      parent:        [0.00, 0.87, 0.78],  // fallback, stesso di down_leader
+    };
+    const DEFAULT_CONN_RGB = [0.35, 0.55, 0.50];
+
+    // ── Runtime state ─────────────────────────────────────────────────────────
+    let latestTopo = { nodes: [], edges: [] };
+    let nodeMap    = new Map();   // id → node object
+    let posMap     = new Map();   // id → {x,y,z}
+
+    // ── Layout ────────────────────────────────────────────────────────────────
+    // Builds a radial tree from the explicit child_leaders[] field on each node.
+    // Root gets 360°; each child's subtree is confined to its parent's sector,
+    // so Y=3 gives exactly 3 branches at 120° from root, each split recursively.
+    function computePositions(nodes) {
+      const map     = new Map();
+      if (!nodes.length) return map;
+
+      const nMap    = new Map(nodes.map(n => [n.id, n]));
+      const leaders = nodes.filter(n => n.role === 'leader');
+
+      // Fallback: no leaders
+      if (!leaders.length) {
+        nodes.forEach((n, i) => {
+          const a = 2 * Math.PI * i / nodes.length;
+          map.set(n.id, { x: 220 * Math.cos(a), y: 0, z: 220 * Math.sin(a) });
+        });
+        return map;
+      }
+
+      // Root: topology_id="0", or parent_id=0, or lowest level leader
+      const root =
+        nodes.find(n => n.topology_id === '0' && n.role === 'leader') ||
+        nodes.find(n => (n.parent_id === 0 || !n.parent_id) && n.role === 'leader') ||
+        leaders.reduce((a, b) => (a.level ?? 0) <= (b.level ?? 0) ? a : b);
+
+      const placed = new Set();
+
+      function placeLeader(node, pos, az, sector) {
+        map.set(node.id, pos);
+        placed.add(node.id);
+
+        // Use child_leaders[] from server — no need to reconstruct
+        const childIds = (node.child_leaders || []);
+        const n = childIds.length;
+        if (!n) return;
+
+        const kidSector = sector / n;
+
+        childIds.forEach((cid, i) => {
+          const child = nMap.get(cid);
+          if (!child || placed.has(cid)) return;
+
+          const kidAz = n === 1
+            ? az
+            : az - sector / 2 + kidSector * (i + 0.5);
+
+          placeLeader(
+            child,
+            { x: pos.x + BRANCH_L * Math.cos(kidAz),
+              y: pos.y + LEVEL_DY,
+              z: pos.z + BRANCH_L * Math.sin(kidAz) },
+            kidAz,
+            kidSector
+          );
+        });
+      }
+
+      // Root at origin, full 360°, initial direction toward -Z (front)
+      placeLeader(root, { x: 0, y: 0, z: 0 }, -Math.PI / 2, 2 * Math.PI);
+
+      // Orphan leaders (disconnected sub-trees)
+      let orphI = 0;
+      for (const l of leaders) {
+        if (!placed.has(l.id)) {
+          const a = 2 * Math.PI * orphI / leaders.length;
+          map.set(l.id, { x: 950 * Math.cos(a), y: -(l.level ?? 0) * 110, z: 950 * Math.sin(a) });
+          orphI++;
+        }
+      }
+
+      // Non-leaders: orbit their leader in the XZ plane
+      const nonLeaders = nodes.filter(n => n.role !== 'leader');
+      const byLeader   = new Map();
+      for (const n of nonLeaders) {
+        const lid = n.leader_id ?? 0;
+        if (!byLeader.has(lid)) byLeader.set(lid, []);
+        byLeader.get(lid).push(n);
+      }
+      for (const [lid, followers] of byLeader) {
+        const lp = map.get(lid) ?? { x: 0, y: 0, z: 0 };
+        const nF = followers.length;
+        const r  = Math.max(50, 22 * Math.pow(nF, 0.65));
+        followers.forEach((n, i) => {
+          const a = 2 * Math.PI * i / Math.max(1, nF) - Math.PI / 2;
+          map.set(n.id, { x: lp.x + r * Math.cos(a), y: lp.y, z: lp.z + r * Math.sin(a) });
+        });
+      }
+      for (const n of nonLeaders) {
+        if (!map.has(n.id)) map.set(n.id, { x: 0, y: 0, z: 0 });
+      }
+
+      return map;
+    }
+
+    // ── Traffic edge filtering (Recent only — no history accumulation) ─────────
+    function filterTrafficEdges(edges) {
+      const winMs = Math.max(500, Number(edgeWindowEl.value) || 5000);
+      const now   = Date.now();
+      return edges.filter(e => (now - e.last_seen_ms) <= winMs);
+    }
+
+    // ── Scene update ──────────────────────────────────────────────────────────
+    const dummy = new THREE.Object3D();
+    const hitMat = new THREE.Matrix4();
+
+    function updateScene() {
+      const nodes       = latestTopo.nodes       || [];
+      const edges       = filterTrafficEdges(latestTopo.edges || []);
+      const connections = latestTopo.connections  || [];
+      const showTraffic = showTrafficEl.checked;
+      const connKind    = connKindEl.value;
+
+      posMap  = computePositions(nodes);
+      nodeMap = new Map(nodes.map(n => [n.id, n]));
+
+      // ── Instances ───────────────────────────────────────────────────────────
+      let lI = 0, sI = 0, bI = 0;
+      instLeader.length = instSender.length = instBase.length = 0;
+
+      for (const n of nodes) {
+        const p = posMap.get(n.id);
+        if (!p) continue;
+
+        dummy.position.set(p.x, p.y, p.z);
+        const baseScale = n.role === 'leader' ? LEADER_SCALE :
+                          n.role === 'sender' ? SENDER_SCALE : BASE_SCALE;
+        dummy.scale.setScalar(baseScale * (0.8 + 0.4 * (n.q ?? 0.5)));
+        dummy.updateMatrix();
+
+        const isIssue = n.running &&
+          (n.connection_state === 'solo' || n.connection_state === 'disconnected');
+        const col = !n.running ? COL_STOPPED
+                  : isIssue   ? COL_ISSUE
+                  : n.role === 'leader' ? COL_LEADER
+                  : n.role === 'sender' ? COL_SENDER
+                  : COL_BASE;
+
+        if (n.role === 'leader') {
+          meshLeader.setMatrixAt(lI, dummy.matrix);
+          meshLeader.setColorAt(lI, col);
+          instLeader[lI++] = n.id;
+        } else if (n.role === 'sender') {
+          meshSender.setMatrixAt(sI, dummy.matrix);
+          meshSender.setColorAt(sI, col);
+          instSender[sI++] = n.id;
+        } else {
+          meshBase.setMatrixAt(bI, dummy.matrix);
+          meshBase.setColorAt(bI, col);
+          instBase[bI++] = n.id;
+        }
+      }
+
+      meshLeader.count = lI; meshSender.count = sI; meshBase.count = bI;
+      for (const m of [meshLeader, meshSender, meshBase]) {
+        m.instanceMatrix.needsUpdate = true;
+        if (m.instanceColor) m.instanceColor.needsUpdate = true;
+        m.computeBoundingSphere();
+      }
+
+      // ── Traffic edges (Recent only, visible only when show_traffic is on) ────
+      const now   = Date.now();
+      const winMs = Math.max(500, Number(edgeWindowEl.value) || 5000);
+      let vi = 0;
+
+      if (showTraffic) {
+        for (const e of edges) {
+          if (vi >= (MAX_EDGE_SEGS - 1) * 2) break;
+          const a = posMap.get(e.from);
+          const b = posMap.get(e.to);
+          if (!a || !b) continue;
+
+          const age_ms = Math.max(0, now - e.last_seen_ms);
+          const br     = Math.max(0.05, 1.0 - age_ms / winMs);
+          const rgb    = KIND_RGB[e.kind] ?? DEFAULT_RGB;
+          const r = rgb[0] * br, g = rgb[1] * br, bv = rgb[2] * br;
+
+          edgePosBuf[vi*3]=a.x; edgePosBuf[vi*3+1]=a.y; edgePosBuf[vi*3+2]=a.z;
+          edgeColBuf[vi*3]=r;   edgeColBuf[vi*3+1]=g;   edgeColBuf[vi*3+2]=bv;
+          vi++;
+          edgePosBuf[vi*3]=b.x; edgePosBuf[vi*3+1]=b.y; edgePosBuf[vi*3+2]=b.z;
+          edgeColBuf[vi*3]=r;   edgeColBuf[vi*3+1]=g;   edgeColBuf[vi*3+2]=bv;
+          vi++;
+        }
+      }
+
+      edgeGeom.setDrawRange(0, vi);
+      edgeGeom.attributes.position.needsUpdate = true;
+      edgeGeom.attributes.color.needsUpdate    = true;
+
+      // ── Structural hierarchy edges (from connections[]) ───────────────────
+      // Color per kind. 'parent' hidden when conn_kind=ALL (redundant with down_leader).
+      const showStruct = showStructEl.checked;
+      let si = 0;
+
+      if (showStruct) {
+        for (const c of connections) {
+          if (si >= (MAX_EDGE_SEGS - 1) * 2) break;
+          // Filter by conn_kind; skip 'parent' when ALL (redundant with down_leader)
+          if (connKind === 'ALL' && c.kind === 'parent') continue;
+          if (connKind !== 'ALL' && c.kind !== connKind) continue;
+
+          const a = posMap.get(c.from);
+          const b = posMap.get(c.to);
+          if (!a || !b) continue;
+
+          const rgb = KIND_CONN_RGB[c.kind] ?? DEFAULT_CONN_RGB;
+
+          structPosBuf[si*3]=a.x; structPosBuf[si*3+1]=a.y; structPosBuf[si*3+2]=a.z;
+          structColBuf[si*3]=rgb[0]; structColBuf[si*3+1]=rgb[1]; structColBuf[si*3+2]=rgb[2];
+          si++;
+          structPosBuf[si*3]=b.x; structPosBuf[si*3+1]=b.y; structPosBuf[si*3+2]=b.z;
+          structColBuf[si*3]=rgb[0]; structColBuf[si*3+1]=rgb[1]; structColBuf[si*3+2]=rgb[2];
+          si++;
+        }
+      }
+
+      structGeom.setDrawRange(0, si);
+      structGeom.attributes.position.needsUpdate = true;
+      structGeom.attributes.color.needsUpdate    = true;
+
+      const trafficInfo = showTraffic ? `  ·  Traffic: ${edges.length}` : '';
+      setMsg(`Nodes: ${nodes.length}  ·  Links: ${connections.length}${trafficInfo}`);
+    }
+
+    // ── Raycasting + tooltip ──────────────────────────────────────────────────
+    const raycaster = new THREE.Raycaster();
+    const mouse     = new THREE.Vector2(-9, -9);
+    let tipTime     = 0;
+
+    container.addEventListener('mousemove', (ev) => {
+      const now = Date.now();
+      if (now - tipTime < 40) return;
+      tipTime = now;
+
+      const rect = container.getBoundingClientRect();
+      mouse.x =  ((ev.clientX - rect.left) / rect.width)  * 2 - 1;
+      mouse.y = -((ev.clientY - rect.top)  / rect.height) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+      const hits = raycaster.intersectObjects([meshLeader, meshSender, meshBase]);
+
+      if (!hits.length) { nodeTip.style.display = 'none'; return; }
+
+      const hit = hits[0];
+      const iid = hit.instanceId;
+      let nid;
+      if      (hit.object === meshLeader) nid = instLeader[iid];
+      else if (hit.object === meshSender) nid = instSender[iid];
+      else                                nid = instBase[iid];
+
+      const n = nodeMap.get(nid);
+      if (!n) { nodeTip.style.display = 'none'; return; }
+
+      // Project 3D position to screen
+      hit.object.getMatrixAt(iid, hitMat);
+      const wp = new THREE.Vector3().setFromMatrixPosition(hitMat).project(camera);
+      const sx = (wp.x + 1) / 2 * rect.width;
+      const sy = (-wp.y + 1) / 2 * rect.height;
+
+      // Health check
+      const issues = [];
+      if (!n.running) issues.push('stopped');
+      else if (n.connection_state === 'solo')         issues.push('solo');
+      else if (n.connection_state === 'disconnected') issues.push('disconnected');
+      else if (n.connection_state === 'joining')      issues.push('joining');
+      const healthHtml = issues.length === 0
+        ? `<span style="color:#3ecf7e">✓ ok</span>`
+        : `<span style="color:#f06040">✗ ${issues.join(', ')}</span>`;
+
+      const downL  = (n.child_leaders || []).length;
+      const downF  = (n.followers    || []).length;
+      const actCnt = (n.active_links  || []).length;
+      const hasUp  = n.parent_id && n.parent_id !== 0 ? 1 : 0;
+      const lvlStr = `${n.level ?? '?'}/${n.total_levels > 0 ? n.total_levels - 1 : '?'}`;
+
+      nodeTip.innerHTML =
+        `<b>#${n.id}</b> &nbsp;<span style="color:#6fa898">${n.ip ?? ''}</span> &nbsp;${healthHtml}<br>` +
+        `topo_id: <b>${n.topology_id ?? '?'}</b> &nbsp; parent_id: ${n.parent_topology_id || '—'}<br>` +
+        `role: ${n.role} &nbsp; level: ${lvlStr} &nbsp; q_i: <b>${Number(n.q ?? 0).toFixed(4)}</b><br>` +
+        `conn: ${n.connection_state ?? '?'} &nbsp; subnet: ${n.subnet ?? '?'}<br>` +
+        `links: up=${hasUp} dn_leaders=${downL} dn_followers=${downF} active=${actCnt}<br>` +
+        `failovers: ${n.failover_count ?? 0} &nbsp; topo_rev: ${n.topology_revision ?? 0}`;
+      nodeTip.style.left    = `${Math.min(rect.width - 230, sx + 14)}px`;
+      nodeTip.style.top     = `${Math.max(8, sy - 8)}px`;
+      nodeTip.style.display = 'block';
+    });
+
+    container.addEventListener('mouseleave', () => { nodeTip.style.display = 'none'; });
+
+    // ── Responsive resize ─────────────────────────────────────────────────────
+    const ro = new ResizeObserver(() => {
+      const w = container.clientWidth, h = container.clientHeight;
+      if (!w || !h) return;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    });
+    ro.observe(container);
+
+    // ── Camera reset ──────────────────────────────────────────────────────────
+    document.getElementById('resetCamBtn').addEventListener('click', () => {
+      camera.position.set(0, 900, 1600);
+      controls.target.set(0, -150, 0);
+      controls.update();
+    });
+
+    // ── Render loop ───────────────────────────────────────────────────────────
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    // ── Utility ───────────────────────────────────────────────────────────────
+    function setMsg(text, isErr = false) {
+      msgBox.textContent    = text;
+      msgBox.style.color    = isErr ? 'var(--bad)' : 'var(--muted)';
+    }
+    function toBool(v) { return String(v) === 'true'; }
+
+    async function api(path, opts = {}) {
+      const res = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...opts });
+      if (!res.ok) throw new Error(await res.text());
+      const text = await res.text();
+      return text ? JSON.parse(text) : {};
+    }
+
+    function installHelpTooltips() {
+      const labels = Array.from(document.querySelectorAll('label[title]'));
+      if (!labels.length) return;
+
+      const tip = document.createElement('div');
+      tip.id = 'helpTip';
+      tip.className = 'help-tip';
+      document.body.appendChild(tip);
+
+      let activeLabel = null;
+      let hideTimer = 0;
+
+      const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+      const placeTip = (label) => {
+        if (!label) return;
+        const pad = 10;
+        const rect = label.getBoundingClientRect();
+        const tw = tip.offsetWidth || 240;
+        const th = tip.offsetHeight || 50;
+        let left = clamp(rect.left, pad, window.innerWidth - tw - pad);
+        let top = rect.top - th - 8;
+        if (top < pad) {
+          top = clamp(rect.bottom + 8, pad, window.innerHeight - th - pad);
+        }
+        tip.style.left = `${left}px`;
+        tip.style.top = `${top}px`;
+      };
+
+      const showTip = (label) => {
+        const text = label?.dataset?.help;
+        if (!text) return;
+        window.clearTimeout(hideTimer);
+        activeLabel = label;
+        tip.textContent = text;
+        tip.classList.add('show');
+        placeTip(label);
+      };
+
+      const hideTip = () => {
+        window.clearTimeout(hideTimer);
+        hideTimer = window.setTimeout(() => {
+          tip.classList.remove('show');
+          activeLabel = null;
+        }, 80);
+      };
+
+      for (const label of labels) {
+        const text = label.getAttribute('title');
+        if (!text) continue;
+        label.dataset.help = text;
+        label.removeAttribute('title');
+        label.classList.add('help-label');
+
+        const q = document.createElement('button');
+        q.type = 'button';
+        q.className = 'help-q';
+        q.textContent = '?';
+        q.setAttribute('aria-label', `Help: ${label.textContent.trim()}`);
+        q.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          if (activeLabel === label && tip.classList.contains('show')) {
+            tip.classList.remove('show');
+            activeLabel = null;
+            return;
+          }
+          showTip(label);
+        });
+        label.appendChild(q);
+
+        label.addEventListener('mouseenter', () => showTip(label));
+        label.addEventListener('mouseleave', hideTip);
+        q.addEventListener('mouseenter', () => showTip(label));
+        q.addEventListener('mouseleave', hideTip);
+        q.addEventListener('focus', () => showTip(label));
+        q.addEventListener('blur', hideTip);
+      }
+
+      document.addEventListener('click', (ev) => {
+        const t = ev.target;
+        if (!(t instanceof Element)) {
+          hideTip();
+          return;
+        }
+        if (t.closest('.help-label') || t.closest('.help-tip')) return;
+        hideTip();
+      });
+
+      window.addEventListener('resize', () => {
+        if (tip.classList.contains('show')) placeTip(activeLabel);
+      });
+      window.addEventListener('scroll', () => {
+        if (tip.classList.contains('show')) placeTip(activeLabel);
+      }, true);
+    }
+
+    async function refreshState() {
+      const [st, mx] = await Promise.all([
+        api('/api/state').catch(() => null),
+        api('/api/metrics').catch(() => null),
+      ]);
+      if (!st) return;
+
+      const cls        = st.running ? 'running' : 'stopped';
+      const spawnPhase = st.spawn_phase || (st.running ? 'running' : 'idle');
+      const simPhase   = mx?.sim_phase ?? '';
+      const spawned    = Number(st.spawned_nodes    || 0);
+      const total      = Number(st.spawn_total      || 0);
+      const pct        = Number(st.spawn_progress_pct || 0);
+      const s          = st.stats || {};
+
+      // Spawn progress bar — only visible while spawning
+      const spawnBar = (spawnPhase === 'spawning' && total > 0)
+        ? `<div class="spawn-bar-wrap"><div class="spawn-bar" style="width:${pct.toFixed(1)}%"></div></div>` +
+          `<div style="font-size:11px;color:var(--muted);margin-bottom:4px">` +
+          `spawning ${spawned}/${total} (${pct.toFixed(1)}%)</div>`
+        : '';
+
+      // sim_phase pill (from /api/metrics)
+      const phaseHtml = simPhase
+        ? ` <span class="phase-pill">${simPhase}</span>`
+        : '';
+
+      // Audit: nodes with connection issues (solo + disconnected from conn_state)
+      const issueCount = mx
+        ? (mx.conn_state?.solo ?? 0) + (mx.conn_state?.disconnected ?? 0)
+        : -1;
+      const auditHtml = issueCount < 0 ? ''
+        : issueCount > 0
+          ? `<div style="color:#f06040;margin-top:4px">⚠ ${issueCount} issue(s)</div>`
+          : `<div style="color:#3ecf7e;margin-top:4px">✓ all ok</div>`;
+
+      stateBox.innerHTML =
+        `<span class="status-pill ${cls}">${cls.toUpperCase()}</span>${phaseHtml}<br>` +
+        `nodes=${s.total_nodes||0} &nbsp; leaders=${s.leaders||0} &nbsp; ` +
+        `base=${s.base||0} &nbsp; running=${s.running_nodes||0}` +
+        spawnBar + auditHtml;
+    }
+
+    async function refreshTopo() {
+      latestTopo = await api('/api/topology');
+      updateScene();
+    }
+
+    // ── Form handling ─────────────────────────────────────────────────────────
+    const fields = [
+      'n','y','nodes','tick_ms','inbox_size','subnet_size','node_goroutines','async_spawn',
+      'spawn_parallelism','spawn_delay_ms','shutdown_timeout_ms','seed',
+      'udp_demo','udp_interval_ms','udp_sender','udp_kind','udp_payload',
+      'udp_subnets','udp_delay_min_ms','udp_delay_max_ms','udp_drop_rate',
+      'q_drift_pct_per_sec','q_update_interval_ms','q_freeze_after_ms','min_reparent_interval_ms',
+      'leader_rotation','rotation_drop_pct','rotation_min_delta','rotation_window_ms',
+      'rotation_min_tenure_ms','rotation_cooldown_ms','rotation_check_ms',
+      'rotation_prepare_quorum_pct','rotation_prepare_timeout_ms',
+      'rotation_commit_quorum_pct','rotation_commit_timeout_ms'
+    ];
+
+    function fillForm(cfg) {
+      for (const k of fields) {
+        const el = document.getElementById(k);
+        if (el && cfg[k] !== undefined) el.value = String(cfg[k]);
+      }
+    }
+
+    function collectForm() {
+      const g = id => document.getElementById(id);
+      return {
+        n: Number(g('n').value), y: Number(g('y').value),
+        nodes: Number(g('nodes').value), tick_ms: Number(g('tick_ms').value),
+        inbox_size: Number(g('inbox_size').value), subnet_size: Number(g('subnet_size').value),
+        node_goroutines: toBool(g('node_goroutines').value),
+        async_spawn: toBool(g('async_spawn').value),
+        spawn_parallelism: Number(g('spawn_parallelism').value),
+        spawn_delay_ms: Number(g('spawn_delay_ms').value),
+        shutdown_timeout_ms: Number(g('shutdown_timeout_ms').value),
+        seed: Number(g('seed').value),
+        udp_demo: toBool(g('udp_demo').value),
+        udp_interval_ms: Number(g('udp_interval_ms').value),
+        udp_sender: g('udp_sender').value, udp_kind: g('udp_kind').value,
+        udp_payload: g('udp_payload').value,
+        udp_subnets: Number(g('udp_subnets').value),
+        udp_delay_min_ms: Number(g('udp_delay_min_ms').value),
+        udp_delay_max_ms: Number(g('udp_delay_max_ms').value),
+        udp_drop_rate: Number(g('udp_drop_rate').value),
+        q_drift_pct_per_sec: Number(g('q_drift_pct_per_sec').value),
+        q_update_interval_ms: Number(g('q_update_interval_ms').value),
+        q_freeze_after_ms: Number(g('q_freeze_after_ms').value),
+        min_reparent_interval_ms: Number(g('min_reparent_interval_ms').value),
+        leader_rotation: toBool(g('leader_rotation').value),
+        rotation_drop_pct: Number(g('rotation_drop_pct').value),
+        rotation_min_delta: Number(g('rotation_min_delta').value),
+        rotation_window_ms: Number(g('rotation_window_ms').value),
+        rotation_min_tenure_ms: Number(g('rotation_min_tenure_ms').value),
+        rotation_cooldown_ms: Number(g('rotation_cooldown_ms').value),
+        rotation_check_ms: Number(g('rotation_check_ms').value),
+        rotation_prepare_quorum_pct: Number(g('rotation_prepare_quorum_pct').value),
+        rotation_prepare_timeout_ms: Number(g('rotation_prepare_timeout_ms').value),
+        rotation_commit_quorum_pct: Number(g('rotation_commit_quorum_pct').value),
+        rotation_commit_timeout_ms: Number(g('rotation_commit_timeout_ms').value),
+      };
+    }
+
+    // ── Button handlers ───────────────────────────────────────────────────────
+    document.getElementById('startBtn').addEventListener('click', async () => {
+      try {
+        setMsg('Starting simulation...');
+        await api('/api/start', { method: 'POST', body: JSON.stringify(collectForm()) });
+        setMsg('Simulation started');
+        await refreshState();
+      } catch (err) { setMsg(String(err.message || err), true); }
+    });
+
+    document.getElementById('stopBtn').addEventListener('click', async () => {
+      try {
+        setMsg('Stopping simulation...');
+        await api('/api/stop', { method: 'POST' });
+        setMsg('Simulation stopped');
+        await refreshState();
+      } catch (err) { setMsg(String(err.message || err), true); }
+    });
+
+    document.getElementById('resetEdgesBtn').addEventListener('click', async () => {
+      try {
+        await api('/api/reset-edges', { method: 'POST' });
+        setMsg('Edge history reset');
+        await refreshTopo();
+      } catch (err) { setMsg(String(err.message || err), true); }
+    });
+
+    edgeWindowEl.addEventListener('input',   updateScene);
+    showStructEl.addEventListener('change',  updateScene);
+    connKindEl.addEventListener('change',    updateScene);
+    showTrafficEl.addEventListener('change', updateScene);
+
+    // ── Recovery panel ───────────────────────────────────────────────────────
+    const recoveryBox     = document.getElementById('recoveryBox');
+    const recoveryBody    = document.getElementById('recoveryBody');
+    const recoveryChevron = document.getElementById('recoveryChevron');
+    document.getElementById('recoveryToggle').addEventListener('click', () => {
+      const open = !recoveryBody.classList.contains('hidden');
+      recoveryBody.classList.toggle('hidden', open);
+      recoveryChevron.textContent = open ? '▸' : '▾';
+    });
+
+    function msStr(v) {
+      if (v == null) return '—';
+      return v >= 10000 ? `${(v / 1000).toFixed(1)}s` : `${v} ms`;
+    }
+    function setRec(id, val, cls) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = val ?? '—';
+      el.className = 'rval' + (cls ? ` ${cls}` : '');
+    }
+
+    async function refreshRecovery() {
+      const data = await api('/api/metrics/recovery/current').catch(() => null);
+      const ep = data?.current ?? data;
+
+      if (!ep || !ep.epoch_id) {
+        recoveryBox.classList.remove('visible');
+        return;
+      }
+      recoveryBox.classList.add('visible');
+
+      // Status pill
+      const pillClass = {
+        running:    'rpill-running',
+        stabilized: 'rpill-stabilized',
+        timeout:    'rpill-timeout',
+        aborted:    'rpill-aborted',
+      }[ep.status] ?? 'rpill-aborted';
+      document.getElementById('recoveryStatus').innerHTML =
+        ` <span class="recovery-pill ${pillClass}">${ep.status}</span> `;
+
+      // Header info
+      const k = ep.killed || {};
+      setRec('rc_trigger', ep.trigger ?? '—');
+      setRec('rc_killed',
+        k.total != null
+          ? `${k.total} (L=${k.leaders} S=${k.senders} B=${k.base})`
+          : '—');
+
+      // Summary timings
+      const s = ep.summary || {};
+      const isRunning = ep.status === 'running';
+
+      setRec('rc_first_leader', msStr(s.time_to_first_new_leader_ms),
+        s.time_to_first_new_leader_ms != null ? 'good' : '');
+      setRec('rc_t50',  msStr(s.time_to_50_connected_ms));
+      setRec('rc_t90',  msStr(s.time_to_90_connected_ms),
+        s.time_to_90_connected_ms != null && !isRunning ? 'good' : '');
+      setRec('rc_t99',  msStr(s.time_to_99_connected_ms));
+      setRec('rc_stable', msStr(s.time_to_topology_stable_ms),
+        s.time_to_topology_stable_ms != null && !isRunning ? 'good' : '');
+      setRec('rc_stable_win_start',   msStr(s.time_to_topology_stable_window_start_ms));
+      const elapsed   = s.topology_stable_window_elapsed_ms;
+      const STABLE_WIN = 10000;
+      const elapsedStr = elapsed != null
+        ? `${msStr(elapsed)} / ${msStr(STABLE_WIN)}`
+        : '—';
+      setRec('rc_stable_win_elapsed', elapsedStr,
+        elapsed != null && elapsed >= STABLE_WIN ? 'good' : '');
+      setRec('rc_peak_disc',
+        s.peak_disconnected_nodes != null ? String(s.peak_disconnected_nodes) : '—',
+        s.peak_disconnected_nodes > 0 ? 'warn' : '');
+
+      // Latency
+      const lat = ep.latency || {};
+      const rec = lat.node_reconnect_ms || lat.node_reconnect_latency_ms || {};
+      const prm = lat.leader_promotion_ms || lat.leader_promotion_latency_ms || {};
+      setRec('rc_rec_p50', msStr(rec.p50));
+      setRec('rc_rec_p95', msStr(rec.p95));
+      setRec('rc_rec_p99', rec.p99 != null ? msStr(rec.p99) : 'n/a (<100)');
+
+      setRec('rc_promo_p95', msStr(prm.p95));
+
+      // Churn
+      const ch = ep.churn || {};
+      setRec('rc_lc',    ch.leader_changes_total  != null ? String(ch.leader_changes_total)  : '—');
+      setRec('rc_pc',    ch.parent_changes_total   != null ? String(ch.parent_changes_total)   : '—');
+      setRec('rc_flaps', ch.role_flaps_total        != null ? String(ch.role_flaps_total)        : '—');
+    }
+
+    // ── Epoch history panel ───────────────────────────────────────────────────
+    const epochsList    = document.getElementById('epochsList');
+    const epochsChevron = document.getElementById('epochsChevron');
+    document.getElementById('epochsToggle').addEventListener('click', () => {
+      const open = !epochsList.classList.contains('hidden');
+      epochsList.classList.toggle('hidden', open);
+      epochsChevron.textContent = open ? '▸' : '▾';
+    });
+
+    function epochDurStr(ep) {
+      if (!ep.started_at_ms) return '—';
+      const end = ep.ended_at_ms || Date.now();
+      const d   = end - ep.started_at_ms;
+      return d >= 10000 ? `${(d / 1000).toFixed(1)}s` : `${d}ms`;
+    }
+
+    function renderEpochDetail(ep) {
+      const s  = ep.summary  || {};
+      const lat = ep.latency || {};
+      const ch = ep.churn    || {};
+      const rec = lat.node_reconnect_ms || lat.node_reconnect_latency_ms || {};
+      const prm = lat.leader_promotion_ms || lat.leader_promotion_latency_ms || {};
+      const k  = ep.killed   || {};
+
+      const row = (label, val) =>
+        `<div class="drow"><span class="dlabel">${label}</span><span class="dval">${val ?? '—'}</span></div>`;
+
+      return `
+        ${row('nodes at t0', s.nodes_total_at_t0)}
+        ${row('leaders at t0', s.leaders_at_t0)}
+        ${row('killed', k.total != null ? `${k.total} (L=${k.leaders} S=${k.senders} B=${k.base})` : '—')}
+        <hr class="rsep">
+        ${row('first leader', msStr(s.time_to_first_new_leader_ms))}
+        ${row('50% conn', msStr(s.time_to_50_connected_ms))}
+        ${row('90% conn', msStr(s.time_to_90_connected_ms))}
+        ${row('stable topo', msStr(s.time_to_topology_stable_ms))}
+        ${row('peak disconn.', s.peak_disconnected_nodes)}
+        <hr class="rsep">
+        ${row('reconnect p50', msStr(rec.p50))}
+        ${row('reconnect p95', msStr(rec.p95))}
+        ${row('reconnect p99', rec.p99 != null ? msStr(rec.p99) : 'n/a (<100)')}
+        ${row('promo p95', msStr(prm.p95))}
+        <hr class="rsep">
+        ${row('leader Δ', ch.leader_changes_total)}
+        ${row('parent Δ', ch.parent_changes_total)}
+        ${row('role flaps', ch.role_flaps_total)}`;
+    }
+
+    async function refreshEpochHistory() {
+      const data = await api('/api/metrics/recovery/epochs?limit=20').catch(() => null);
+      if (!data || !Array.isArray(data.epochs || data)) return;
+
+      const list = data.epochs || data;
+      if (!list.length) {
+        epochsList.innerHTML = '<div style="padding:8px 10px;color:var(--muted);font-size:12px">No epochs yet.</div>';
+        return;
+      }
+
+      epochsList.innerHTML = list.map(ep => {
+        const pillClass = {
+          running:    'rpill-running',
+          stabilized: 'rpill-stabilized',
+          timeout:    'rpill-timeout',
+          aborted:    'rpill-aborted',
+        }[ep.status] ?? 'rpill-aborted';
+        const k = ep.killed || {};
+        const killedStr = k.total != null ? `${k.total} killed` : '';
+        const t90 = (ep.summary || {}).time_to_90_connected_ms;
+        const t90str = t90 != null ? ` · t90=${msStr(t90)}` : '';
+
+        return `
+          <div class="epoch-row" data-epoch-id="${ep.epoch_id}">
+            <span class="etrig">${ep.trigger ?? '?'}</span>
+            <span class="ekilled">${killedStr}${t90str}</span>
+            <span><span class="recovery-pill ${pillClass}">${ep.status}</span></span>
+            <span class="edur">${epochDurStr(ep)}</span>
+          </div>
+          <div class="epoch-detail" id="epd-${ep.epoch_id}">${renderEpochDetail(ep)}</div>`;
+      }).join('');
+
+      // Click on row toggles detail
+      epochsList.querySelectorAll('.epoch-row').forEach(row => {
+        row.addEventListener('click', () => {
+          const id  = row.dataset.epochId;
+          const det = document.getElementById(`epd-${id}`);
+          if (!det) return;
+          const isOpen = det.classList.contains('open');
+          // close all others
+          epochsList.querySelectorAll('.epoch-detail').forEach(d => d.classList.remove('open'));
+          if (!isOpen) det.classList.add('open');
+        });
+      });
+    }
+
+    // ── Packet stats panel ───────────────────────────────────────────────────
+    const packetsChevron = document.getElementById('packetsChevron');
+    const packetsBody    = document.getElementById('packetsBody');
+    document.getElementById('packetsToggle').addEventListener('click', () => {
+      const open = !packetsBody.classList.contains('hidden');
+      packetsBody.classList.toggle('hidden', open);
+      packetsChevron.textContent = open ? '▸' : '▾';
+    });
+
+    // Format large numbers: 1234 → "1.2k", 1234567 → "1.2M"
+    function fmtN(v) {
+      if (v == null) return '—';
+      if (v >= 1e6)  return `${(v / 1e6).toFixed(1)}M`;
+      if (v >= 1e3)  return `${(v / 1e3).toFixed(1)}k`;
+      return String(v);
+    }
+    function fmtRate(v) {
+      if (v == null) return '—';
+      if (v >= 1e3)  return `${(v / 1e3).toFixed(1)}k`;
+      return v % 1 === 0 ? String(v) : v.toFixed(1);
+    }
+
+    // Previous traffic snapshot for client-side rate calculation
+    let _prevTraffic = null;
+    let _prevTrafficTs = 0;
+
+    // WS packet kind display order + labels
+    const WS_KINDS = [
+      ['hello',                    'hello'],
+      ['hello_ack',                'hello_ack'],
+      ['hello_relay',              'hello_relay'],
+      ['transition_hint',          'transition_hint'],
+      ['leader_rotate_prepare',    'lr_prepare'],
+      ['leader_rotate_prepare_ack','lr_prepare_ack'],
+      ['leader_rotate_commit',     'lr_commit'],
+      ['leader_rotate_commit_ack', 'lr_commit_ack'],
+      ['leader_rotate_applied',    'lr_applied'],
+    ];
+
+    async function refreshPackets() {
+      const mx = await api('/api/metrics').catch(() => null);
+      if (!mx) return;
+
+      const tr  = mx.traffic         || {};
+      const tr_rate = mx.traffic_rate || {};
+      const pc  = mx.packet_counters  || {};
+      const now = Date.now();
+
+      // ── UDP table ───────────────────────────────────────────────────────────
+      // Client-side rate = Δtotal / Δt_s since last poll
+      const dt = _prevTrafficTs ? (now - _prevTrafficTs) / 1000 : 0;
+
+      function clientRate(key) {
+        if (!dt || !_prevTraffic) return null;
+        const prev = _prevTraffic[key] ?? 0;
+        const curr = tr[key] ?? 0;
+        return Math.round((curr - prev) / dt);
+      }
+
+      const udpRows = [
+        { label: 'DISCOVER', sent: tr.discover_sent_total, recv: tr.discover_recv_total,
+          rateKey: 'discover_sent_total',
+          p95: tr_rate.discover_per_sec?.p95, p99: tr_rate.discover_per_sec?.p99 },
+        { label: 'OFFER',    sent: tr.offer_sent_total,    recv: tr.offer_recv_total,
+          rateKey: 'offer_sent_total',
+          p95: tr_rate.offer_per_sec?.p95,    p99: tr_rate.offer_per_sec?.p99 },
+        { label: 'CONNECT',  sent: tr.connect_sent_total,  recv: null,
+          rateKey: 'connect_sent_total',
+          p95: tr_rate.connect_per_sec?.p95,  p99: tr_rate.connect_per_sec?.p99 },
+      ];
+
+      document.getElementById('pkt_udp_body').innerHTML = udpRows.map(row => `
+        <tr>
+          <td>${row.label}</td>
+          <td class="pval">${fmtN(row.sent)}</td>
+          <td class="pval">${fmtN(row.recv)}</td>
+          <td class="rate">${fmtRate(clientRate(row.rateKey))}</td>
+          <td>${fmtRate(row.p95)}</td>
+          <td>${fmtRate(row.p99)}</td>
+        </tr>`).join('');
+
+      // Save snapshot for next rate calc
+      _prevTraffic   = { ...tr };
+      _prevTrafficTs = now;
+
+      // ── WS table ────────────────────────────────────────────────────────────
+      const udp_pc = pc.udp || {};
+      const ws_pc  = pc.ws  || {};
+
+      document.getElementById('pkt_ws_body').innerHTML = WS_KINDS.map(([key, label]) => {
+        const entry = ws_pc[key] || {};
+        return `<tr>
+          <td>${label}</td>
+          <td class="pval">${fmtN(entry.sent)}</td>
+          <td class="pval">${fmtN(entry.recv)}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    // ── Metrics panel ─────────────────────────────────────────────────────────
+    const metricsBody    = document.getElementById('metricsBody');
+    const metricsChevron = document.getElementById('metricsChevron');
+    document.getElementById('metricsToggle').addEventListener('click', () => {
+      const open = !metricsBody.classList.contains('hidden');
+      metricsBody.classList.toggle('hidden', open);
+      metricsChevron.textContent = open ? '▸' : '▾';
+    });
+
+    function setText(id, val) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = val;
+    }
+
+    async function refreshMetrics() {
+      const mx = await api('/api/metrics').catch(() => null);
+      if (!mx) return;
+
+      const cs = mx.conn_state || {};
+      const jn = mx.join || {};
+      const pf = mx.perf || {};
+
+      setText('mx_connected',   cs.connected ?? '—');
+      setText('mx_joining',     cs.joining   ?? '—');
+      setText('mx_solo',        cs.solo      ?? '—');
+      setText('mx_join_rate',   jn.success_rate != null
+        ? `${(jn.success_rate * 100).toFixed(1)}%` : '—');
+      setText('mx_join_p95',    jn.latency_ms_p95 != null
+        ? `${jn.latency_ms_p95} ms` : '—');
+      setText('mx_heap',        pf.heap_alloc_mb  != null
+        ? `${pf.heap_alloc_mb.toFixed(1)} MB` : '—');
+      setText('mx_goroutines',  pf.goroutines ?? '—');
+      setText('mx_topo_kb',     pf.api_topology_payload_kb != null
+        ? `${pf.api_topology_payload_kb.toFixed(0)} KB` : '—');
+      const kl = mx.kill;
+      setText('mx_killed', kl != null
+        ? `${kl.total} (L=${kl.leaders} S=${kl.senders} B=${kl.base})` : '—');
+    }
+
+    // ── Chaos controls ────────────────────────────────────────────────────────
+    const chaosBody    = document.getElementById('chaosBody');
+    const chaosChevron = document.getElementById('chaosChevron');
+    document.getElementById('chaosToggle').addEventListener('click', () => {
+      const open = !chaosBody.classList.contains('hidden');
+      chaosBody.classList.toggle('hidden', open);
+      chaosChevron.textContent = open ? '▸' : '▾';
+    });
+
+    function chaosVal(id) { return Number(document.getElementById(id).value) || 0; }
+
+    document.getElementById('chaosSpawnBtn').addEventListener('click', async () => {
+      const count = chaosVal('chaos_spawn_count');
+      if (count < 1) return;
+      try {
+        setMsg(`Spawning ${count} nodes...`);
+        const r = await api('/api/nodes/spawn', {
+          method: 'POST',
+          body: JSON.stringify({ count, async: true, parallelism: 0, spawn_delay_ms: 0 }),
+        });
+        setMsg(`Spawned ${r.spawned ?? count} nodes — total now ${r.after_total ?? '?'}`);
+        await refreshState();
+      } catch (err) { setMsg(String(err.message || err), true); }
+    });
+
+    // Opens recovery panel and kicks off an immediate refresh of both recovery + history.
+    // Called after any destructive chaos action.
+    function openRecoveryPanel() {
+      recoveryBox.classList.add('visible');
+      recoveryBody.classList.remove('hidden');
+      recoveryChevron.textContent = '▾';
+      // Small delay so the backend has time to open the epoch before we poll
+      setTimeout(() => {
+        refreshRecovery().catch(() => {});
+        refreshEpochHistory().catch(() => {});
+      }, 300);
+    }
+
+    document.getElementById('chaosKillBtn').addEventListener('click', async () => {
+      const pct      = chaosVal('chaos_kill_pct');
+      const role     = document.getElementById('chaos_kill_role').value;
+      const minKeep  = chaosVal('chaos_kill_min_keep');
+      const excludeRoot = document.getElementById('chaos_exclude_root').checked;
+      if (pct < 1) return;
+      try {
+        setMsg(`Killing ${pct}% of ${role} nodes...`);
+        const body = { mode: 'percent', percent: pct, target_role: role, exclude_root: excludeRoot };
+        if (role === 'leader') body.min_leaders_keep = minKeep;
+        const r = await api('/api/nodes/kill', { method: 'POST', body: JSON.stringify(body) });
+        const breakdown = r.removed_leaders != null
+          ? ` (L=${r.removed_leaders} S=${r.removed_senders} B=${r.removed_base})`
+          : '';
+        setMsg(`Killed ${r.removed_count ?? '?'} nodes${breakdown} — total now ${r.after_total ?? '?'}`);
+        await refreshState();
+        openRecoveryPanel();
+      } catch (err) { setMsg(String(err.message || err), true); }
+    });
+
+    document.getElementById('chaosRestartBtn').addEventListener('click', async () => {
+      const pct       = chaosVal('chaos_restart_pct');
+      const staggerMs = chaosVal('chaos_stagger_ms');
+      const excludeRoot = document.getElementById('chaos_exclude_root').checked;
+      if (pct < 1) return;
+      try {
+        setMsg(`Restarting ${pct}% of nodes...`);
+        const r = await api('/api/nodes/restart-random', {
+          method: 'POST',
+          body: JSON.stringify({ mode: 'percent', percent: pct, stagger_ms: staggerMs, exclude_root: excludeRoot }),
+        });
+        setMsg(`Restarted ${r.restarted ?? '?'} nodes — total now ${r.after_total ?? '?'}`);
+        await refreshState();
+        openRecoveryPanel();
+      } catch (err) { setMsg(String(err.message || err), true); }
+    });
+
+    // ── Polling ───────────────────────────────────────────────────────────────
+    setInterval(() => refreshState().catch(() => {}),        1000);
+    setInterval(() => refreshTopo().catch(() => {}),         1000);
+    setInterval(() => refreshMetrics().catch(() => {}),      2000);
+    setInterval(() => refreshPackets().catch(() => {}),      2000);
+    setInterval(() => refreshRecovery().catch(() => {}),     2000);
+    setInterval(() => refreshEpochHistory().catch(() => {}), 5000);
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+    async function init() {
+      installHelpTooltips();
+
+      // Initial renderer size
+      const w = container.clientWidth || 800;
+      const h = container.clientHeight || 620;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+
+      const defs = await api('/api/defaults');
+      fillForm(defs);
+      await refreshState();
+      await refreshTopo();
+      refreshMetrics().catch(() => {});
+      refreshPackets().catch(() => {});
+      refreshRecovery().catch(() => {});
+      refreshEpochHistory().catch(() => {});
+      animate();
+      setMsg('Ready — drag to rotate · scroll to zoom · right-drag to pan');
+    }
+
+    init().catch(err => setMsg(String(err.message || err), true));
+  </script>
+</body>
+</html>
